@@ -1,0 +1,48 @@
+[tool.poetry]
+name = "avplanner"
+version = "0.1.0"
+description = ""
+authors = [
+    "Leon Lan <leon.lanyidong@gmail.com>",
+]
+license = "MIT"
+readme = "README.md"
+
+
+[tool.poetry.dependencies]
+python = "^3.9,<4.0"
+requests = "^2.32.3"
+
+
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.6.2"
+pytest = ">=7.2.1"
+
+
+[tool.black]
+line-length = 79
+
+
+[tool.ruff]
+line-length = 79
+
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "NPY", "PYI", "Q", "RET", "RSE", "RUF", "SLF", "SIM", "TCH"
+]
+
+
+[tool.ruff.lint.isort]
+case-sensitive = true
+known-first-party = ["tests"]
+
+
+[tool.mypy]
+ignore_missing_imports = true
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
