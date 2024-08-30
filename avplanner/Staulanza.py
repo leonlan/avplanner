@@ -11,8 +11,8 @@ QUERY = "?prm={month}&chm=0#TabDisp"
 DETAIL_SUFFIX = "Booking/EN/prenotazione1.php"
 
 headers = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:129.0) Gecko/20100101 Firefox/129.0",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:129.0) Gecko/20100101 Firefox/129.0",  # noqa
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",  # noqa
     "Accept-Language": "en-US,en;q=0.5",
     "Accept-Encoding": "gzip, deflate, br, zstd",
     "DNT": "1",
@@ -31,7 +31,9 @@ class APIClient:
     def __init__(self, base_url: str):
         self._base_url = base_url
 
-    def get_month_availability(self, date: datetime.date) -> dict:
+    def get_month_availability(
+        self, date: datetime.date
+    ) -> list[datetime.date]:
         """
         Fetches the availability for a specific month from the API.
         """
@@ -45,16 +47,14 @@ class APIClient:
             # Extracts the dates with green availability.
             div_disponibilita = soup.find("div", class_="disponibilita")
             libero_dates = div_disponibilita.find_all("td", class_="libero")
-            dates_libero = [date.text for date in libero_dates]
+            avail = [date.text for date in libero_dates]
 
             # Returns the list of dates with green availability.
-            return [
-                date.replace(day=int(date_str)) for date_str in dates_libero
-            ]
+            return [date.replace(day=int(date_str)) for date_str in avail]
 
         except Exception as e:
             print(e)
-            return {}
+            return []
 
     def get_detailed_availability(self, date: datetime.date):
         """
@@ -127,10 +127,12 @@ class Staulanza(AvailabilityFetcher):
                 detail = {}
                 num_available = 0
 
-            availability[date] = {
-                "num_available": num_available,
-                "rooms": detail,
-            }
+            availability[date] = Result(
+                {
+                    "num_available": num_available,
+                    "rooms": detail,
+                }
+            )
 
         return availability
 
@@ -140,12 +142,13 @@ def main():
 
 
 def _get_base(url: str) -> str:
-    if ".com" in url:
-        return url.split(".com")[0] + ".com/"
-    elif ".it" in url:
-        return url.split(".it")[0] + ".it/"
-    else:
-        raise ValueError("Invalid URL.")
+    match url:
+        case url if ".com" in url:
+            return url.split(".com")[0] + ".com/"
+        case url if ".it" in url:
+            return url.split(".it")[0] + ".it/"
+        case _:
+            raise ValueError("Invalid URL: does not contain .com or .it")
 
 
 if __name__ == "__main__":

@@ -21,14 +21,15 @@ class Availability:
 
 
 def _get_fetcher(hut: Hut) -> AvailabilityFetcher:
-    if hut.booking_type == "bulky":
-        return Bulky(hut.booking_id)
-    elif hut.booking_type == "staulanza":
-        return Staulanza(hut.booking_id)
-    elif hut.booking_type == "bookingsuedtirol":
-        return BookingSuedTirol(hut.booking_id)
-    else:
-        raise ValueError(f"Unknown hut: {hut.name}")
+    match hut.booking_type:
+        case "bulky":
+            return Bulky(hut.booking_id)
+        case "staulanza":
+            return Staulanza(hut.booking_id)
+        case "bookingsuedtirol":
+            return BookingSuedTirol(hut.booking_id)
+        case _:
+            raise ValueError(f"Unknown hut: {hut.name}")
 
 
 def load_huts():

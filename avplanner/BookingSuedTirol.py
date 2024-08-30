@@ -14,7 +14,7 @@ BASE_URL = (
     "https://api.bookingsuedtirol.com/widgets/v6/properties/{booking_id}/"
 )
 ROOMS_URL = BASE_URL + "rooms?lang=en"
-QUERY = "?from={start:%Y-%m-%d}&to={end:%Y-%m-%d}&guestCount={guest_count}&guests={guests}&lang=en"
+QUERY = "?from={start:%Y-%m-%d}&to={end:%Y-%m-%d}&guestCount={guest_count}&guests={guests}&lang=en"  # noqa
 AVAILABILITIES_URL = BASE_URL + "availabilities" + QUERY
 DETAILS_URL = BASE_URL + "offers" + QUERY
 
@@ -28,7 +28,7 @@ class APIClient:
     MonTMB API client to get availability for a given date.
     """
 
-    def __init__(self, booking_id: int):
+    def __init__(self, booking_id: str | int):
         self._booking_id = booking_id
 
     def get_room_types(self) -> dict[int, int]:
@@ -47,7 +47,8 @@ class APIClient:
             response.raise_for_status()
             data = response.json()
 
-            # TODO should probably also check min because people can get those rooms.
+            # TODO should probably also check min because people can get those
+            # rooms with less people than capacity.
             return {room["room_id"]: room["occupancy"]["max"] for room in data}
 
         except requests.RequestException as e:
@@ -87,7 +88,7 @@ class APIClient:
         start: datetime.date,
         end: datetime.date,
         guest_count: int,
-    ) -> dict[datetime.date, int]:
+    ) -> list[datetime.date]:
         """
         Returns the dates with possible availability for the given date range
         and guest count.
@@ -105,17 +106,17 @@ class APIClient:
             response.raise_for_status()
             data = response.json()
 
-            return {
+            return [
                 datetime.datetime.strptime(item["date"], "%Y-%m-%d").date()
                 for item in data
-            }
+            ]
 
         except requests.RequestException as e:
             print(f"Request error: {e}")
         except ValueError as e:
             print(f"JSON parsing error: {e}")
 
-        return {}
+        return []
 
 
 class BookingSuedTirol(AvailabilityFetcher):
@@ -123,7 +124,7 @@ class BookingSuedTirol(AvailabilityFetcher):
     Fetcher for BookingSuedTirol systems.
     """
 
-    def __init__(self, booking_id: int):
+    def __init__(self, booking_id: str | int):
         self._booking_id = booking_id
         self._client = APIClient(booking_id)
 
@@ -132,7 +133,7 @@ class BookingSuedTirol(AvailabilityFetcher):
         start: datetime.date,
         end: datetime.date,
         cache: Optional[dict[datetime.date, Result]] = None,
-    ) -> dict[datetime.date, int]:
+    ) -> dict[datetime.date, Result]:
         availability = {}
         room_types = self._client.get_room_types()
 
@@ -145,7 +146,7 @@ class BookingSuedTirol(AvailabilityFetcher):
                 check[date].append(num_guests)
 
         for date in date_range(start, end):
-            rooms = {}  # room_id: num_rooms_available
+            rooms: dict[int, int] = {}  # room_id: num_rooms_available
             for num_guests in check[date]:
                 rooms |= self._client.get_detailed_availability(
                     date, num_guests
@@ -155,10 +156,12 @@ class BookingSuedTirol(AvailabilityFetcher):
                 room_types[k]: v for k, v in rooms.items()
             }  # room_size: num_rooms_available
             num_available = sum(k * v for k, v in rooms_.items())  # total beds
-            availability[date] = {
-                "num_available": num_available,
-                "rooms": rooms_,
-            }
+            availability[date] = Result(
+                {
+                    "num_available": num_available,
+                    "rooms": rooms_,
+                }
+            )
 
         return availability
 

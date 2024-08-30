@@ -6,6 +6,7 @@ class RateLimiter:
     """
     Rate limiter decorator to limit the number of calls to a function within a
     certain period (in seconds).
+
     Parameters
     ----------
     max_calls
@@ -18,7 +19,7 @@ class RateLimiter:
     def __init__(self, max_calls: int, period: int):
         self.max_calls = max_calls
         self.period = period
-        self.timestamps = []
+        self.timestamps: list[float] = []
 
     def __call__(self, func):
         @wraps(func)

@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from .AvailabilityFetcher import AvailabilityFetcher, Result
 
 _headers = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:129.0) Gecko/20100101 Firefox/129.0",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:129.0) Gecko/20100101 Firefox/129.0",  # noqa
     "Accept": "*/*",
     "Accept-Language": "en-US,en;q=0.5",
     "Accept-Encoding": "gzip, deflate, br, zstd",
@@ -23,7 +23,10 @@ _headers = {
 }
 
 
-URL = "https://{slug}.bukly.com/en-us/hotels/ajax_widget?slug={slug}&day={date:%Y-%m-%d}&dir=next"
+URL = (
+    "https://{slug}.bukly.com/en-us/hotels/ajax_widget?slug={slug}"
+    "&day={date:%Y-%m-%d}&dir=next"
+)
 
 
 def month_abbrev_to_number(abbrev):
@@ -35,9 +38,16 @@ class APIClient:
     def __init__(self, booking_id: str):
         self.booking_id = booking_id  # slug
 
-    def get_month_availability(self, date: datetime.date) -> dict:
+    def get_month_availability(
+        self, date: datetime.date
+    ) -> list[datetime.date]:
         """
         Fetches the availability for a specific month from the API.
+
+        Returns
+        -------
+        list[datetime.date]
+            List of dates with availability.
         """
         url = URL.format(slug=self.booking_id, date=date)
 
@@ -81,6 +91,8 @@ class APIClient:
         except Exception as e:
             print(e)
             pass
+
+        return []
 
     def get_detailed_availability(self, date: datetime.date):
         end = date + datetime.timedelta(days=1)
@@ -136,7 +148,7 @@ class Bulky(AvailabilityFetcher):
         end: datetime.date,
         cache: Optional[dict[datetime.date, Result]] = None,
     ) -> dict[datetime.date, Result]:
-        availability = {}  # TODO
+        availability: dict[datetime.date, Result] = {}  # TODO
         return availability
 
 
