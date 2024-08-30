@@ -1,7 +1,10 @@
 import datetime
+from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
+
+from .AvailabilityFetcher import AvailabilityFetcher, Result
 
 _headers = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:129.0) Gecko/20100101 Firefox/129.0",
@@ -20,22 +23,23 @@ _headers = {
 }
 
 
+URL = "https://{slug}.bukly.com/en-us/hotels/ajax_widget?slug={slug}&day={date:%Y-%m-%d}&dir=next"
+
+
 def month_abbrev_to_number(abbrev):
     datetime_object = datetime.datetime.strptime(abbrev, "%b")
     return datetime_object.month
 
 
 class APIClient:
-    def __init__(self):
-        pass
+    def __init__(self, booking_id: str):
+        self.booking_id = booking_id  # slug
 
     def get_month_availability(self, date: datetime.date) -> dict:
         """
         Fetches the availability for a specific month from the API.
         """
-        url = "https://rifugioaverau.bukly.com/en-us/hotels/ajax_widget?slug=rifugioaverau&day={date:%Y-%m-%d}&dir=next"
-        url = "https://scotoni.bukly.com/en-us/hotels/ajax_widget?slug=scotoni&day={date:%Y-%m-%d}&dir=next"
-        url = url.format(date=date)
+        url = URL.format(slug=self.booking_id, date=date)
 
         try:
             response = requests.get(url, headers=_headers)
@@ -121,12 +125,24 @@ class APIClient:
             print("-" * 40)
 
 
-class Bulky:
-    pass
+class Bulky(AvailabilityFetcher):
+    def __init__(self, booking_id: str):
+        self._booking_id = booking_id
+        self._client = APIClient(booking_id)
+
+    def get_availability(
+        self,
+        start: datetime.date,
+        end: datetime.date,
+        cache: Optional[dict[datetime.date, Result]] = None,
+    ) -> dict[datetime.date, Result]:
+        availability = {}  # TODO
+        return availability
 
 
 if __name__ == "__main__":
-    client = APIClient()
+    client = APIClient("rifugioaverau")
+    client = APIClient("scotoni")
     start = datetime.date(2024, 10, 2)
     client.get_month_availability(start)
     client.get_detailed_availability(start)

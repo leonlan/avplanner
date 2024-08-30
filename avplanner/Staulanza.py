@@ -1,7 +1,11 @@
 import datetime
+from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
+
+from .AvailabilityFetcher import AvailabilityFetcher, Result
+from .utils import date_range
 
 QUERY = "?prm={month}&chm=0#TabDisp"
 DETAIL_SUFFIX = "Booking/EN/prenotazione1.php"
@@ -56,7 +60,14 @@ class APIClient:
         """
         Fetches the detailed availability for a specific date from the API.
         """
-        url = _get_base(self._base_url) + DETAIL_SUFFIX
+        if "tissi" in self._base_url:
+            # edge case for tissi hut
+            SUFFIX = "EN/prenotazione1.php"
+        else:
+            SUFFIX = DETAIL_SUFFIX
+
+        url = _get_base(self._base_url) + SUFFIX
+
         end = date + datetime.timedelta(days=1)
         payload = {
             "arrivo": date.strftime("%d-%m-%Y"),
@@ -79,20 +90,49 @@ class APIClient:
                     max_value = max(int(option["value"]) for option in options)
                     rooms[room_name] = max_value
 
-            for room_name, max_value in rooms.items():
-                print(f"Room: {room_name}, Maximum Beds: {max_value}")
+            # TODO figure out how to get the max value for each room
+            # for room_name, max_value in rooms.items():
+            #     print(f"Room: {room_name}, Maximum Beds: {max_value}")
 
             # TODO need to try max value by making posts for larger values
             # Start with one, keep increasing.
             return rooms
 
-        except Exception as e:
-            print(e)
+        except Exception:
             return {}
 
 
-class Staulanza:
-    pass
+class Staulanza(AvailabilityFetcher):
+    def __init__(self, base_url: str):
+        self._base_url = base_url
+        self._client = APIClient(base_url)
+
+    def get_availability(
+        self,
+        start: datetime.date,
+        end: datetime.date,
+        cache: Optional[dict[datetime.date, Result]] = None,
+    ) -> dict[datetime.date, Result]:
+        """
+        Gets the availability for a given date range.
+        """
+        availability = {}
+        total = self._client.get_month_availability(start)
+        cache = cache or {}
+        for date in date_range(start, end):
+            if date in total:
+                detail = self._client.get_detailed_availability(date)
+                num_available = sum(detail.values())
+            else:
+                detail = {}
+                num_available = 0
+
+            availability[date] = {
+                "num_available": num_available,
+                "rooms": detail,
+            }
+
+        return availability
 
 
 def main():
@@ -111,10 +151,11 @@ def _get_base(url: str) -> str:
 if __name__ == "__main__":
     # base_url = "https://rifugiolagazuoi.com/EN/disponibilita.php"
     base_url = "https://www.staulanza.it/Booking/EN/disponibilita.php"
-    # base_url = "https://www.rifugiocoldai.com/Booking/index_en.php"
-    # base_url = "https://www.crodadalago.it/Booking/IT/disponibilita.php"
-    # base_url = "https://www.rifugiotissi.com/EN/disponibilita.php"
-    # base_url = "https://rifugiovazzoler.com/Booking/EN/disponibilita.php"
+    base_url = "https://www.rifugiocoldai.com/Booking/index_en.php"
+    base_url = "https://www.crodadalago.it/Booking/IT/disponibilita.php"
+    base_url = "https://www.rifugiotissi.com/EN/disponibilita.php"
+    detail_suffix = "EN/prenotazione1.php"
+    base_url = "https://rifugiovazzoler.com/Booking/EN/disponibilita.php"
     client = APIClient(base_url)
     # https://www.rifugiotissi.com/EN/prenotazione1.php
-    print(client.get_detailed_availability(datetime.date(2024, 9, 29)))
+    print(client.get_detailed_availability(datetime.date(2024, 9, 17)))

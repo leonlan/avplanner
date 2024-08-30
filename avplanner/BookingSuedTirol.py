@@ -1,11 +1,13 @@
 import datetime
 from collections import defaultdict
 from datetime import timedelta
+from typing import Optional
 
 import requests
 
-from avplanner.RateLimiter import RateLimiter
-from avplanner.utils import date_range
+from .AvailabilityFetcher import AvailabilityFetcher, Result
+from .RateLimiter import RateLimiter
+from .utils import date_range
 
 # Get room types
 BASE_URL = (
@@ -116,17 +118,9 @@ class APIClient:
         return {}
 
 
-class BookingSuedTirol:
+class BookingSuedTirol(AvailabilityFetcher):
     """
     Fetcher for BookingSuedTirol systems.
-
-    Logic
-    -----
-    # TODO
-
-    Notes
-    -----
-    Pretty hard rate limits.
     """
 
     def __init__(self, booking_id: int):
@@ -134,7 +128,10 @@ class BookingSuedTirol:
         self._client = APIClient(booking_id)
 
     def get_availability(
-        self, start: datetime.date, end: datetime.date
+        self,
+        start: datetime.date,
+        end: datetime.date,
+        cache: Optional[dict[datetime.date, Result]] = None,
     ) -> dict[datetime.date, int]:
         availability = {}
         room_types = self._client.get_room_types()
@@ -174,5 +171,5 @@ if __name__ == "__main__":
     # data = fetcher.get_rooms()
     client = APIClient(booking_id)
     start = datetime.datetime(2024, 9, 10).date()
-    end = start + timedelta(days=30)
+    end = start + timedelta(days=1)
     data = fetcher.get_availability(start, end)
