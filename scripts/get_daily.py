@@ -76,6 +76,8 @@ def get_daily(start: datetime.date, end: datetime.date, cache=None):
                 )
             )
 
+        print(f"Processed {hut.name}: {len(results)} days available.")
+
     return availabilities
 
 

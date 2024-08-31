@@ -8,6 +8,8 @@ from .AvailabilityFetcher import AvailabilityFetcher, Result
 from .RateLimiter import RateLimiter
 from .utils import date_range
 
+# TODO the month in the query is w.r.t. 2024 but may be different
+# depending on the current year
 QUERY = "?prm={month}&chm=0#TabDisp"
 DETAIL_SUFFIX = "Booking/EN/prenotazione1.php"
 HUTS_OTHER_SUFFIX = ["tissi", "lagazuoi"]
