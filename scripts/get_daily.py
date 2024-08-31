@@ -15,9 +15,10 @@ class Hut:
 @dataclass
 class Availability:
     hut_name: str
+    fetch_date: datetime.date
     booking_date: datetime.date
     num_available: int
-    rooms: dict[str | int, int]
+    rooms: dict[int, int]
 
 
 def _get_fetcher(hut: Hut) -> AvailabilityFetcher:
@@ -38,7 +39,10 @@ def load_huts():
     with open(LOC, "r") as fh:
         reader = csv.DictReader(fh)
         for row in reader:
-            if row["booking_type"] not in ["staulanza", "bookingsuedtirol"]:
+            if row["booking_type"] not in [
+                "staulanza",
+                # "bookingsuedtirol",
+            ]:
                 continue
 
             hut = Hut(
@@ -51,29 +55,51 @@ def load_huts():
     return huts
 
 
-def get_daily(cache=None):
+def get_daily(start: datetime.date, end: datetime.date, cache=None):
     """
     Get the availability for all huts.
     """
-    start_date = datetime.date(2024, 9, 23)
-    end_date = datetime.date(2024, 9, 25)
+    availabilities = []
+    today = datetime.date.today()
 
     for hut in load_huts():
         fetcher = _get_fetcher(hut)
         cache = cache if cache else {}
-        results = fetcher.get_availability(start_date, end_date, cache)
+        results = fetcher.get_availability(start, end, cache)
 
         for booking_date, result in results.items():
             num_available = result["num_available"]
             rooms = result["rooms"]
-            availability = Availability(
-                hut.name, booking_date, num_available, rooms
+            availabilities.append(
+                Availability(
+                    hut.name, today, booking_date, num_available, rooms
+                )
             )
 
-            print(availability)
-
-    return "done"
+    return availabilities
 
 
 if __name__ == "__main__":
-    get_daily()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--out", type=str, default="data/daily.csv")
+    parser.add_argument(
+        "--start",
+        type=lambda s: datetime.datetime.strptime(s, "%Y-%m-%d").date(),
+        required=True,
+        help="Start date in YYYY-MM-DD format",
+    )
+    parser.add_argument(
+        "--end",
+        type=lambda s: datetime.datetime.strptime(s, "%Y-%m-%d").date(),
+        required=True,
+        help="End date in YYYY-MM-DD format",
+    )
+    args = parser.parse_args()
+
+    availabilities = get_daily(args.start, args.end)
+    with open(args.out, "a") as fh:
+        writer = csv.DictWriter(fh, fieldnames=Availability.__annotations__)
+        for availability in availabilities:
+            writer.writerow(availability.__dict__)
