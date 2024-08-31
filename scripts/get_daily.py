@@ -100,7 +100,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    availabilities = get_daily(args.start, args.end)
+    start = max(args.start, datetime.date.today())  # no later than today
+    availabilities = get_daily(start, args.end)
     with open(args.out, "a") as fh:
         writer = csv.DictWriter(fh, fieldnames=Availability.__annotations__)
         for availability in availabilities:
