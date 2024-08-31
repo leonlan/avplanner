@@ -5,10 +5,12 @@ import requests
 from bs4 import BeautifulSoup
 
 from .AvailabilityFetcher import AvailabilityFetcher, Result
+from .RateLimiter import RateLimiter
 from .utils import date_range
 
 QUERY = "?prm={month}&chm=0#TabDisp"
 DETAIL_SUFFIX = "Booking/EN/prenotazione1.php"
+HUTS_OTHER_SUFFIX = ["tissi", "lagazuoi"]
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:129.0) Gecko/20100101 Firefox/129.0",  # noqa
@@ -27,9 +29,12 @@ headers = {
 }
 
 
+MAX_ROOMS = 8
+
+
 class APIClient:
-    def __init__(self, base_url: str):
-        self._base_url = base_url
+    def __init__(self, calendar_url: str):
+        self._calendar_url = calendar_url  # disponibilita.php
 
     def get_month_availability(
         self, date: datetime.date
@@ -37,7 +42,7 @@ class APIClient:
         """
         Fetches the availability for a specific month from the API.
         """
-        url = (self._base_url + QUERY).format(month=date.month)
+        url = (self._calendar_url + QUERY).format(month=date.month)
 
         try:
             response = requests.get(url, headers=headers)
@@ -56,23 +61,25 @@ class APIClient:
             print(e)
             return []
 
-    def get_detailed_availability(self, date: datetime.date):
+    @RateLimiter(max_calls=2, period=1)
+    def get_detailed_availability(
+        self, date: datetime.date, num_guests: int = 1
+    ):
         """
         Fetches the detailed availability for a specific date from the API.
         """
-        if "tissi" in self._base_url:
-            # edge case for tissi hut
+        if any(hut in self._calendar_url for hut in HUTS_OTHER_SUFFIX):
             SUFFIX = "EN/prenotazione1.php"
         else:
             SUFFIX = DETAIL_SUFFIX
 
-        url = _get_base(self._base_url) + SUFFIX
+        url = _get_base(self._calendar_url) + SUFFIX
 
         end = date + datetime.timedelta(days=1)
         payload = {
             "arrivo": date.strftime("%d-%m-%Y"),
             "partenza": end.strftime("%d-%m-%Y"),
-            "persone": "1",  # TODO dormitories max value is limited by this
+            "persone": num_guests,
         }
 
         try:
@@ -90,12 +97,6 @@ class APIClient:
                     max_value = max(int(option["value"]) for option in options)
                     rooms[room_name] = max_value
 
-            # TODO figure out how to get the max value for each room
-            # for room_name, max_value in rooms.items():
-            #     print(f"Room: {room_name}, Maximum Beds: {max_value}")
-
-            # TODO need to try max value by making posts for larger values
-            # Start with one, keep increasing.
             return rooms
 
         except Exception:
@@ -118,27 +119,30 @@ class Staulanza(AvailabilityFetcher):
         """
         availability = {}
         total = self._client.get_month_availability(start)
-        cache = cache or {}
+
         for date in date_range(start, end):
+            rooms: dict[int, int] = {}
             if date in total:
-                detail = self._client.get_detailed_availability(date)
-                num_available = sum(detail.values())
-            else:
-                detail = {}
-                num_available = 0
+                # Keep fetching detailed availability until no new data is
+                # found, or until the maximum number of rooms is reached.
+                for idx in range(1, MAX_ROOMS + 1):
+                    res = self._client.get_detailed_availability(date, idx)
+                    rooms |= res
+                    if not res:  # no new availability
+                        break
+
+            # TODO room sizes are not considered but it is not clear how to get
+            # them from the API
+            num_available = sum(rooms.values())
 
             availability[date] = Result(
                 {
                     "num_available": num_available,
-                    "rooms": detail,
+                    "rooms": rooms,
                 }
             )
 
         return availability
-
-
-def main():
-    pass
 
 
 def _get_base(url: str) -> str:
@@ -149,16 +153,3 @@ def _get_base(url: str) -> str:
             return url.split(".it")[0] + ".it/"
         case _:
             raise ValueError("Invalid URL: does not contain .com or .it")
-
-
-if __name__ == "__main__":
-    # base_url = "https://rifugiolagazuoi.com/EN/disponibilita.php"
-    base_url = "https://www.staulanza.it/Booking/EN/disponibilita.php"
-    base_url = "https://www.rifugiocoldai.com/Booking/index_en.php"
-    base_url = "https://www.crodadalago.it/Booking/IT/disponibilita.php"
-    base_url = "https://www.rifugiotissi.com/EN/disponibilita.php"
-    detail_suffix = "EN/prenotazione1.php"
-    base_url = "https://rifugiovazzoler.com/Booking/EN/disponibilita.php"
-    client = APIClient(base_url)
-    # https://www.rifugiotissi.com/EN/prenotazione1.php
-    print(client.get_detailed_availability(datetime.date(2024, 9, 17)))

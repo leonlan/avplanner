@@ -135,44 +135,35 @@ class BookingSuedTirol(AvailabilityFetcher):
         cache: Optional[dict[datetime.date, Result]] = None,
     ) -> dict[datetime.date, Result]:
         availability = {}
-        room_types = self._client.get_room_types()
 
-        check = defaultdict(list)
+        # First use the global calendar to find which (date, num_guests)
+        # combination has rooms.
+        has_rooms = defaultdict(list)
         for num_guests in range(1, 5):
             dates = self._client.get_global_availability(
                 start, end, num_guests
             )
             for date in dates:
-                check[date].append(num_guests)
+                has_rooms[date].append(num_guests)
 
+        # For each specific date find the room IDs that are available.
+        room_types = self._client.get_room_types()  # room_id -> size
         for date in date_range(start, end):
-            rooms: dict[int, int] = {}  # room_id: num_rooms_available
-            for num_guests in check[date]:
-                rooms |= self._client.get_detailed_availability(
+            room2num: dict[int, int] = {}  # room_id: num_rooms_available
+            for num_guests in has_rooms[date]:
+                # Overriding here is OK because room availability is the same
+                # regardless of the number of guests queried.
+                room2num |= self._client.get_detailed_availability(
                     date, num_guests
                 )
 
-            rooms_ = {
-                room_types[k]: v for k, v in rooms.items()
-            }  # room_size: num_rooms_available
-            num_available = sum(k * v for k, v in rooms_.items())  # total beds
+            rooms = {room_types[k]: v for k, v in room2num.items()}
+            num_available = sum(k * v for k, v in rooms.items())
             availability[date] = Result(
                 {
                     "num_available": num_available,
-                    "rooms": rooms_,
+                    "rooms": rooms,
                 }
             )
 
         return availability
-
-
-if __name__ == "__main__":
-    # booking_id = 10716
-    booking_id = 13308
-    booking_id = 10716
-    fetcher = BookingSuedTirol(booking_id)
-    # data = fetcher.get_rooms()
-    client = APIClient(booking_id)
-    start = datetime.datetime(2024, 9, 10).date()
-    end = start + timedelta(days=1)
-    data = fetcher.get_availability(start, end)

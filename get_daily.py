@@ -17,7 +17,7 @@ class Availability:
     hut_name: str
     booking_date: datetime.date
     num_available: int
-    rooms: dict[str, int]
+    rooms: dict[str | int, int]
 
 
 def _get_fetcher(hut: Hut) -> AvailabilityFetcher:
@@ -38,7 +38,7 @@ def load_huts():
     with open(LOC, "r") as fh:
         reader = csv.DictReader(fh)
         for row in reader:
-            if row.get("booking_id") == "":
+            if row["booking_type"] not in ["staulanza", "bookingsuedtirol"]:
                 continue
 
             hut = Hut(
@@ -55,13 +55,10 @@ def get_daily(cache=None):
     """
     Get the availability for all huts.
     """
-    start_date = datetime.date(2024, 9, 15)
-    end_date = datetime.date(2024, 9, 26)
+    start_date = datetime.date(2024, 9, 23)
+    end_date = datetime.date(2024, 9, 25)
 
     for hut in load_huts():
-        if hut.booking_type != "staulanza":
-            continue
-
         fetcher = _get_fetcher(hut)
         cache = cache if cache else {}
         results = fetcher.get_availability(start_date, end_date, cache)
