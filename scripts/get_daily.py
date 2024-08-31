@@ -15,7 +15,7 @@ class Hut:
 @dataclass
 class Availability:
     hut_name: str
-    fetch_date: datetime.date
+    fetch_datetime: datetime.datetime
     booking_date: datetime.date
     num_available: int
     rooms: dict[int, int]
@@ -41,7 +41,7 @@ def load_huts():
         for row in reader:
             if row["booking_type"] not in [
                 "staulanza",
-                # "bookingsuedtirol",
+                "bookingsuedtirol",
             ]:
                 continue
 
@@ -60,7 +60,7 @@ def get_daily(start: datetime.date, end: datetime.date, cache=None):
     Get the availability for all huts.
     """
     availabilities = []
-    today = datetime.date.today()
+    today = datetime.datetime.today()
 
     for hut in load_huts():
         fetcher = _get_fetcher(hut)
