@@ -68,15 +68,15 @@ def get_daily(start: datetime.date, end: datetime.date, cache=None):
         results = fetcher.get_availability(start, end, cache)
 
         for booking_date, result in results.items():
-            num_available = result["num_available"]
+            num_avail = result["num_available"]
             rooms = result["rooms"]
             availabilities.append(
-                Availability(
-                    hut.name, today, booking_date, num_available, rooms
-                )
+                Availability(hut.name, today, booking_date, num_avail, rooms)
             )
 
-        print(f"Processed {hut.name}: {len(results)} days available.")
+        num_days = len(results)
+        num_avail = sum(res["num_available"] for res in results.values())
+        print(f"Processed {hut.name}: {num_avail}/{num_days} days available.")
 
     return availabilities
 
