@@ -56,7 +56,7 @@ class APIClient:
 
         return {}
 
-    @RateLimiter(max_calls=1, period=3)
+    @RateLimiter(max_calls=1, period=5)
     def get_detailed_availability(
         self, date: datetime.date, guest_count: int
     ) -> dict[datetime.date, dict[int, int]]:
@@ -82,7 +82,7 @@ class APIClient:
 
         return {}
 
-    @RateLimiter(max_calls=1, period=3)
+    @RateLimiter(max_calls=1, period=5)
     def get_global_availability(
         self,
         start: datetime.date,

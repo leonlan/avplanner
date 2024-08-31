@@ -30,3 +30,4 @@ jobs:
           git fetch origin
           git add data/daily.csv
           git commit -m "Update daily availability $(date +%Y-%m-%d)"
+          git push origin main
