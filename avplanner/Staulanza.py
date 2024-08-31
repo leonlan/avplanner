@@ -61,7 +61,7 @@ class APIClient:
             print(e)
             return []
 
-    @RateLimiter(max_calls=2, period=1)
+    @RateLimiter(max_calls=4, period=1)
     def get_detailed_availability(
         self, date: datetime.date, num_guests: int = 1
     ):

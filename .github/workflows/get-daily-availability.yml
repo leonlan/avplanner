@@ -22,13 +22,11 @@ jobs:
         run: uv sync --all-extras --dev
       - name: Get new availability data
         run: |
-          uv run scripts/get_daily.py --out data/daily.csv --start 2024-09-10 --end 2024-09-20
+          uv run scripts/get_daily.py --out data/daily.csv --start 2024-09-10 --end 2024-09-28
       - name: Commit and push to availability branch
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'leonlan@users.noreply.github.com'
           git fetch origin
-          git checkout main
           git add data/daily.csv
           git commit -m "Update daily availability $(date +%Y-%m-%d)"
-          git push origin main
