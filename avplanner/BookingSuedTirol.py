@@ -97,7 +97,7 @@ class APIClient:
 
         return {}
 
-    @RateLimiter(max_calls=1, period=5)
+    @RateLimiter(max_calls=1, period=10)
     def get_global_availability(
         self,
         start: datetime.date,
