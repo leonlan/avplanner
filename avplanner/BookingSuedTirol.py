@@ -60,7 +60,22 @@ class APIClient:
     def get_detailed_availability(
         self, date: datetime.date, guest_count: int
     ) -> dict[datetime.date, dict[int, int]]:
-        # get "rooms"; for each room "room_id" and "room_free"
+        """
+        Get the detailed day availability for a specific date and guest count.
+
+        Parameters
+        ----------
+        date: datetime.date
+            The date to check availability for.
+        guest_count: int
+            The number of guests to check availability for, which determines
+            the room types to show.
+
+        Returns
+        -------
+        dict[datetime.date, dict[int, int]]
+            A dictionary mapping room IDs to the number of available rooms.
+        """
         url = DETAILS_URL.format(
             booking_id=self._booking_id,
             start=date,
@@ -92,7 +107,29 @@ class APIClient:
         """
         Returns the dates with possible availability for the given date range
         and guest count.
+
+        Parameters
+        ----------
+        start: datetime.date
+            The start date to check availability for.
+        end: datetime.date
+            The end date to check availability for.
+        guest_count: int
+            The number of guests to check availability for.
+
+        Returns
+        -------
+        list[datetime.date]
+            A list of dates with availability.
+
+        Raises
+        ------
+        ValueError
+            If the date range is greater than 60 days.
         """
+        if end - start > timedelta(days=60):
+            raise ValueError("Date range must be less or equal than 60 days.")
+
         url = AVAILABILITIES_URL.format(
             booking_id=self._booking_id,
             start=start,
@@ -128,21 +165,45 @@ class BookingSuedTirol(AvailabilityFetcher):
         self._booking_id = booking_id
         self._client = APIClient(booking_id)
 
+    def _get_total_availability(
+        self, start: datetime.date, end: datetime.date, num_guests: int
+    ) -> list[datetime.date]:
+        """
+        Gets the total global availability for a given date range. Repeatedly
+        calls the global availability API to get the availability for 60 days.
+
+        Returns
+        -------
+        list[datetime.date]
+            A list of dates with availability.
+        """
+        availability = []
+        current = start
+        while current <= end:
+            data = self._client.get_global_availability(
+                current, current + timedelta(days=60), num_guests
+            )
+            availability.extend(data)
+            current += timedelta(days=61)  # +1 because end date is inclusive
+
+        return availability
+
     def get_availability(
         self,
         start: datetime.date,
         end: datetime.date,
         cache: Optional[dict[datetime.date, Result]] = None,
     ) -> dict[datetime.date, Result]:
+        """
+        Fetches the availability for a given date range.
+        """
         availability = {}
 
         # First use the global calendar to find which (date, num_guests)
         # combination has rooms.
         has_rooms = defaultdict(list)
         for num_guests in range(1, 5):
-            dates = self._client.get_global_availability(
-                start, end, num_guests
-            )
+            dates = self._get_total_availability(start, end, num_guests)
             for date in dates:
                 has_rooms[date].append(num_guests)
 
