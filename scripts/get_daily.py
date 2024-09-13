@@ -42,6 +42,7 @@ def load_huts():
             if row["booking_type"] not in [
                 "staulanza",
                 "bookingsuedtirol",
+                "bulky",
             ]:
                 continue
 
@@ -76,7 +77,10 @@ def get_daily(start: datetime.date, end: datetime.date, cache=None):
 
         num_days = len(results)
         num_avail = sum(res["num_available"] > 0 for res in results.values())
-        print(f"Processed {hut.name}: {num_avail}/{num_days} days available.")
+        print(
+            f"Processed {hut.name} ({hut.booking_type}): "
+            f"{num_avail}/{num_days} days available."
+        )
 
     return availabilities
 

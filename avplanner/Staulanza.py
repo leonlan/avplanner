@@ -133,8 +133,8 @@ class Staulanza(AvailabilityFetcher):
                     if not res:  # no new availability
                         break
 
-            # TODO room sizes are not considered but it is not clear how to get
-            # them from the API
+            # TODO room sizes are not considered so it is not clear how to get
+            # them from the API. we just sum all the room values for now
             num_available = sum(rooms.values())
 
             availability[date] = Result(
